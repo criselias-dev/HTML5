@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>HTML5 CANVAS - OPTIMIZED MODE</title>
+
+    <style>
+        /* RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .hud {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            color: #0ff;
+            font-size: 13px;
+            letter-spacing: 1px;
+            opacity: 0.85;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="hud">
+    OPTIMIZED MODE<br>
+    GPU 2GB SAFE
+</div>
+
+<script>
+    // ===============================
+    // CANVAS SETUP (LOW COST)
+    // ===============================
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+        const dpr = 1; // TRAVADO PRA PERFORMANCE
+
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // ===============================
+    // CONFIGURAÇÕES (SAFE)
+    // ===============================
+    const PARTICLE_COUNT = 500;
+    const MAX_DISTANCE = 90;
+    const MAX_LINKS = 6; // limite de conexões por partícula
+    const particles = [];
+
+    // ===============================
+    // PARTICLE CLASS
+    // ===============================
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+
+        reset() {
+            this.x = Math.random() * window.innerWidth;
+            this.y = Math.random() * window.innerHeight;
+            this.radius = Math.random() * 2.5 + 1;
+            this.speedX = (Math.random() - 0.5) * 1.2;
+            this.speedY = (Math.random() - 0.5) * 1.2;
+            this.life = Math.random() * 300 + 200;
+        }
+
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life--;
+
+            if (
+                this.x < 0 ||
+                this.x > window.innerWidth ||
+                this.y < 0 ||
+                this.y > window.innerHeight ||
+                this.life <= 0
+            ) {
+                this.reset();
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(0, 255, 255, 0.75)";
+            ctx.shadowBlur = 6;       // BLUR BAIXO
+            ctx.shadowColor = "#0ff";
+            ctx.fill();
+        }
+    }
+
+    // ===============================
+    // INIT
+    // ===============================
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle());
+    }
+
+    // ===============================
+    // LOOP PRINCIPAL
+    // ===============================
+    function animate() {
+        // Fade mais forte = menos custo
+        ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+        // Partículas
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        // Conexões LIMITADAS (quase O(n))
+        for (let i = 0; i < particles.length; i++) {
+            let links = 0;
+
+            for (let j = i + 1; j < particles.length && links < MAX_LINKS; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < MAX_DISTANCE) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0,255,255,${1 - dist / MAX_DISTANCE})`;
+                    ctx.lineWidth = 0.4;
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.stroke();
+                    links++;
+                }
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+
+</body>
+</html>

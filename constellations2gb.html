@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Constelações — Canvas HTML5</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: #02040a;
+            overflow: hidden;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        canvas {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .hud {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            font-size: 13px;
+            color: rgba(180, 200, 255, 0.7);
+            letter-spacing: 1px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<div class="hud">
+    CONSTELAÇÕES<br>
+    NIGHT SKY MODE
+</div>
+
+<script>
+    // ===============================
+    // CANVAS SETUP (PERFORMANCE SAFE)
+    // ===============================
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+        const dpr = 1; // travado para GPU fraca
+
+        canvas.style.width = window.innerWidth + "px";
+        canvas.style.height = window.innerHeight + "px";
+
+        canvas.width = window.innerWidth * dpr;
+        canvas.height = window.innerHeight * dpr;
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // ===============================
+    // CONFIGURAÇÕES
+    // ===============================
+    const PARTICLE_COUNT = 600;
+    const MAX_DISTANCE = 120;
+    const MAX_LINKS = 6;
+
+    // Cores das "estrelas"
+    const STAR_COLORS = [
+        "rgba(180, 200, 255, 0.9)", // azul claro
+        "rgba(120, 160, 255, 0.85)", // azul médio
+        "rgba(255, 255, 255, 0.9)", // branca
+        "rgba(255, 140, 140, 0.85)" // vermelha suave
+    ];
+
+    const particles = [];
+
+    // ===============================
+    // FUNDO (AZUL NOTURNO VARIÁVEL)
+    // ===============================
+    let nightPhase = 0;
+
+    function drawBackground() {
+        // varia levemente a luminosidade do azul
+        const lightness = 6 + Math.sin(nightPhase) * 2;
+        ctx.fillStyle = `hsla(220, 60%, ${lightness}%, 0.45)`;
+        ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+        nightPhase += 0.003; // bem lento, quase imperceptível
+    }
+
+    // ===============================
+    // PARTICLE CLASS
+    // ===============================
+    class Particle {
+        constructor() {
+            this.reset();
+        }
+
+        reset() {
+            this.x = Math.random() * window.innerWidth;
+            this.y = Math.random() * window.innerHeight;
+            this.radius = Math.random() * 1.8 + 1.0;
+            this.speedX = (Math.random() - 0.5) * 0.8;
+            this.speedY = (Math.random() - 0.5) * 0.8;
+            this.life = Math.random() * 400 + 300;
+            this.color = STAR_COLORS[Math.floor(Math.random() * STAR_COLORS.length)];
+        }
+
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life--;
+
+            if (
+                this.x < 0 ||
+                this.x > window.innerWidth ||
+                this.y < 0 ||
+                this.y > window.innerHeight ||
+                this.life <= 0
+            ) {
+                this.reset();
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = this.color;
+            ctx.fill();
+        }
+    }
+
+    // ===============================
+    // INIT
+    // ===============================
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new Particle());
+    }
+
+    // ===============================
+    // LOOP PRINCIPAL
+    // ===============================
+    function animate() {
+        drawBackground();
+
+        particles.forEach(p => {
+            p.update();
+            p.draw();
+        });
+
+        // Conexões estilo constelação
+        for (let i = 0; i < particles.length; i++) {
+            let links = 0;
+
+            for (let j = i + 1; j < particles.length && links < MAX_LINKS; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < MAX_DISTANCE) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = "rgba(160, 180, 255, 0.25)";
+                    ctx.lineWidth = 0.4;
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.stroke();
+                    links++;
+                }
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+
+</body>
+</html>
